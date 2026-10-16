@@ -2,6 +2,7 @@ package calc.modelo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Memoria {
 
@@ -14,6 +15,7 @@ public class Memoria {
 
     private TipoComando ultimaOperacao = null;
     private boolean substituir = false;
+    private boolean porcentagem = false;
     private String textoAtual = "";
     private String textoBuffer = "";
 
@@ -36,12 +38,11 @@ public class Memoria {
     }
 
     public void processarComando(String comando) {
-        // FIXME não consigo pôr 0.1, 0.25...
-        // FIXME quando aperto em uma operação, ele permite colocar 0 à esquerda e ponto mesmo com display vazio
-        // FIXME consigo pôr zeros à direita após o ponto flutuante (0.100000...)
+        // FIXME não consigo pôr 0.1, 0.25... quando o display está vazio (por exemplo quando abre a calc)
+        // FIXME após uma operação do tipo 6 - 6 = 0, ao clicar em ponto, ele substitui por um ponto ao invés de "0.",
+        //  tendo que apertar no zero primeiro e dps no ponto
+
         // FIXME fazer diminuir a fonte para caber o número no display
-        // FIXME divisão com porcentagem da entrada2 está errada (200 / 50% -> 200 / 0.5 -> 200 * (1/2) = 200 * 2/1 = 400,
-        //  mas mostra 100 na calculadora)
 
         TipoComando tipoComando = detectarTipoComando(comando);
 
@@ -61,15 +62,18 @@ public class Memoria {
         } else if (tipoComando == TipoComando.NUMERO || tipoComando == TipoComando.PONTO) {
 
             if (!textoAtual.isEmpty()) {
+                getTextoAtual();
                 textoAtual = substituir ? comando : textoAtual + comando;
                 substituir = false;
             } else if (tipoComando == TipoComando.NUMERO){
                 textoAtual = comando;
+                substituir = false;
             }
 
         } else if (tipoComando == TipoComando.PORCENTAGEM) {
             try {
-                textoAtual = "" + Double.parseDouble(textoBuffer) * Double.parseDouble(textoAtual)/100;
+                textoAtual = "" + Double.parseDouble(textoAtual)/100;
+                porcentagem = true;
             } catch (NumberFormatException e) {
                 // Caso esteja vazio
             }
@@ -117,10 +121,20 @@ public class Memoria {
 
                 switch(ultimaOperacao) {
                     case SOMA:
-                        resultado = entrada1 + entrada2;
+                        if (porcentagem) {
+                            resultado = entrada1 + (entrada1 * entrada2);
+                            porcentagem = false;
+                        } else {
+                            resultado = entrada1 + entrada2;
+                        }
                         textoAtual = "" + resultado; break;
                     case SUB:
-                        resultado = entrada1 - entrada2;
+                        if (porcentagem) {
+                            resultado = entrada1 - (entrada1 * entrada2);
+                            porcentagem = false;
+                        } else {
+                            resultado = entrada1 - entrada2;
+                        }
                         textoAtual = "" + resultado; break;
                     case MULT:
                         resultado = entrada1 * entrada2;
